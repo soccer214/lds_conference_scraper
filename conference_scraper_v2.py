@@ -15,14 +15,47 @@ import requests
 import os
 
 
+global base
+
 base = "https://www.churchofjesuschrist.org/"
 
+year = 0
+month = 0
+count = 0
+test = None
 
-def grab_conf(year, month):
-    # grab conference page
-    url = Request(
-        f"https://www.churchofjesuschrist.org/study/general-conference/{year}/{month}?lang=eng"
+
+def readCommandLine():
+    # read command line args
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-y", type=str, help="year: -y four digit")
+    parser.add_argument("-m", type=str, help="month: two digit")
+    parser.add_argument("-t", type=str, required=False, help="test: -t True")
+    parser.add_argument(
+        "-c", type=str, required=False, help="count: -c digit, only valid in testing"
     )
+    args = parser.parse_args()
+
+    if args.y is None or args.m is None:
+        raise argparse.ArgumentError(
+            'Must input -y as year ("2020") and -m as month ("04", "10")'
+        )
+    global year, month, count, test
+    # designate args to values
+    year = args.y
+    month = args.m
+    count = args.c
+    t_first = args.t
+    if t_first:
+        test = True
+    else:
+        test = False
+    return
+
+
+def grab_conf():
+    # grab conference page
+    url = Request(f"{base}/study/general-conference/{year}/{month}?lang=eng")
     html_page = urlopen(url)
     soup = bs(html_page, "html.parser")
     links = []
@@ -35,10 +68,11 @@ def grab_conf(year, month):
     approved = ["?lang=eng"]
     links[:] = [url for url in links if any(sub in url for sub in approved)]
 
-    return links
+    return links[2:]
 
 
-def build_file(base, i, year, month, fpath):
+# scrape, filter, and store each file
+def build_file(i, fpath):
 
     try:
 
@@ -90,9 +124,11 @@ def build_file(base, i, year, month, fpath):
                 " ",
                 "_",
             )
+            title = title.encode("ascii", "ignore")
+            title = title.decode("utf-8")
             title = title.lower()
 
-        if test is True:
+        if test:
             file_name = f"test---{name}---{title}"
             # c+=1
         else:
@@ -108,69 +144,26 @@ def build_file(base, i, year, month, fpath):
 
         print(f"{file_name}-{e}!!!!!!!!!!!!!!!! Not Completed")
 
+    return
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-y", type=str, help="year: -y four digit")
-parser.add_argument("-m", type=str, help="month: two digit")
-parser.add_argument("-t", type=str, required=False, help="test: -t True")
-parser.add_argument(
-    "-c", type=str, required=False, help="count: -c digit, only valid in testing"
-)
-args = parser.parse_args()
 
-if args.y is None or args.m is None:
-    raise argparse.ArgumentError(
-        'Must input -y as year ("2020") and -m as month ("04", "10")'
-    )
-
-year = args.y
-month = args.m
-count = args.c
-test = args.t
-links = grab_conf(year, month)
-
-# If we're in a directory called "talks", we're good to go.
-#     Otherwise, create a talk directory, and cd to it
-cwd = os.getcwd()
-
-curr_dir = os.path.basename(cwd)
-fpath = cwd
-if os.path.isdir(curr_dir) == "talks":
-    # I'm in a directory called "talks" -> break
-    pass
-elif os.path.isdir(f"{cwd}/talks"):
-    # Is there a "talk" directory here? yes -> set fpath to talks
-    fpath = f"{cwd}/talks"
-
-else:
-    # Make "talks" directory, set path
-    os.makedirs("talks")
-    fpath = f"{cwd}/talks"
-
-print("NEW & IMPROVED PATH: ", fpath)
-
-# building test files
-if test:
-    # check if count is filled in
+# if a test run this definition first
+def testScript(links, fpath):
+    # check for count
     if count is None:
         print('when testing enter "-t True -c (number)"')
         sys.exit()
 
-    count = int(args.c)
+    num = int(count)
     print(f"############### WE ARE TESTING {count} FILES ########################")
-    links = links[:count]
-    print(links)
-    test = True
-    # fpath += 'test---'
+    # designate list length
+    links = links[:num]
     for i in links:
-        build_file(base, i, year, month, fpath)
+        build_file(i, fpath)
 
-else:
-    if count:
-        print("count is only allowed in testing (-t True)")
-        sys.exit()
-    for i in links:
-        build_file(base, i, year, month, fpath)
+    print("test completed")
+    sys.exit()
+    return
 
 
 def delete_file(fpath):
@@ -178,5 +171,30 @@ def delete_file(fpath):
         if "[]---[]" in fname:
             os.remove(os.path.join(fpath, fname))
 
+    return
 
+
+# begin file
+if __name__ == "__main__":
+    readCommandLine()
+
+# get links to all talks
+links = grab_conf()
+
+
+# file placement prep
+fpath = os.getcwd()
+curr_dir = os.path.basename(fpath)
+print("NEW & IMPROVED PATH: ", fpath)
+
+# building test files
+if test:
+    # check if count is filled in
+    testScript(links, fpath)
+
+# build real file
+for i in links:
+    build_file(i, fpath)
+
+# delete extraneous files that may be picked up
 delete_file(fpath)
