@@ -66,7 +66,7 @@ def grab_conf():
     # filter duplicates
     approved = ["?lang=eng"]
     links[:] = [url for url in links if any(sub in url for sub in approved)]
-
+    links.pop()
     return links[2:]
 
 
@@ -140,11 +140,16 @@ def createTexString(link_name):
             dir_name = f"{{/repository/{fname}}}"
 
             for i in author:
-                k = i.args
+                k = i.text
+                k = "".join(k)
 
             for i in title:
-                v = i.args
-            tex_string += f"  \\aosachapter{v}{{s:distsys}}{k}\n  \\input{dir_name}\n\n"
+                v = i.text
+                v = "".join(v)
+
+            tex_string += (
+                f"  \\chapter{{{v}}}\n  \\chapterauthor{{{k}}}\n  \\input{dir_name}\n\n"
+            )
             print(tex_string)
     return tex_string
 
@@ -167,14 +172,22 @@ sessions = [
 def createContentTable(true_links, sessions):
     tex_string = ""
     n = 0
+    first_time = True
     for j in true_links:
         print("###########################:", j)
         session_string = "[]---"
         if session_string in str(j):
-            tex_string += f" \\end{{multicols}}\n\n%-------------------------------------------------\n% {{{sessions[n]}}}\n%-------------------------------------------------\n\\part{{{sessions[n]}}}\n \\begin{{multicols}}{{2}}\n\n\n"
-            n += 1
-            print("session_string entered")
-            continue
+            if first_time is True:
+                tex_string += f"<TOC START>\n\n\\part{{{sessions[n]}}}\n \\begin{{multicols}}{{2}}\n\n\n"
+                n += 1
+                print("first time entered")
+                first_time = False
+                continue
+            else:
+                tex_string += f" \\end{{multicols}}\n\n%-------------------------------------------------\n% {{{sessions[n]}}}\n%-------------------------------------------------\n\\part{{{sessions[n]}}}\n \\begin{{multicols}}{{2}}\n\n\n"
+                n += 1
+                print("session_string entered")
+                continue
         else:
             print("else entered")
             link_name = str(j)
@@ -182,19 +195,21 @@ def createContentTable(true_links, sessions):
             tex_string += get_tex
 
     # built final input string
-    full_tex = f"{tex_string}\n\n\\end{{multicols}}\n\n"
+    full_tex = f"{tex_string}\n\n\\end{{multicols}}\n\n\\restore{{multicols}}"
 
     # open and find line to replace
-    toc_name = "t-general_conference--notepad.tex"
+    toc_name = "../t-general_conference.tex"
+    # fil = open(toc_name, "rt")
+    lookup = "<TOC START>"
+
     fil = open(toc_name, "rt")
     data = fil.read()
-    data = data.replace("\end{mulitcols}", full_tex)
+    data = data.replace(lookup, full_tex)
     fil.close()
     # open and write data to toc file
     fil = open(toc_name, "wt")
     fil.write(data)
     fil.close()
-
     return
 
 
@@ -215,6 +230,3 @@ for i in links:
     true_links.append(file_name)
 
 createContentTable(true_links, sessions)
-
-# delete last item from list(it's always a repeat value)
-true_links.pop()
