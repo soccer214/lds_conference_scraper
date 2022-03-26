@@ -70,6 +70,52 @@ def grab_conf():
     return links[2:]
 
 
+# copy lines  in text
+def copy_lines(filename, begin, end):
+    with open(filename, "r") as f:
+        lines = f.readlines()[begin + 1 : end]
+        string = ""
+        for i in lines:
+            string += i
+        string = dropFirstChar(string)
+        return string
+
+
+# get row index of filter in text file which happens twice
+def getLocations(fil, start):
+    locations = []
+    with open(fil, "r") as f:
+        lines = f.readlines()
+        for i, line in enumerate(lines):
+            if start in line:
+                locations.append(i)
+    string = copy_lines(fil, locations[0], locations[1])
+    return string
+
+
+# DROP FIRST character of each line of text (comments)
+def dropFirstChar(string):
+    lines = string.split("\n")
+    for i in range(len(lines)):
+        lines[i] = lines[i][1:]
+    return "\n".join(lines)
+
+
+# replace characters in string
+def sessionReplace(string, replace):
+    string = string.replace("Saturday Morning Session", replace)
+    return string
+
+
+def talkReplace(string, title, author, dir_name):
+    string = string.replace("TITLE", title)
+    string = string.replace("AUTHOR", author)
+    string = string.replace("/repository/FILE", dir_name)
+    string = string.replace("{{", "{")
+    string = string.replace("}}", "}")
+    return string
+
+
 def create_title(i):
 
     url = Request(f"{base}{i}")
@@ -129,7 +175,7 @@ def create_title(i):
 
 
 # create string input for each talk
-def createTexString(link_name):
+def createTexString(talk_lines, link_name):
     tex_string = ""
     fpath = os.getcwd()
     for fname in os.listdir(fpath):
@@ -147,9 +193,7 @@ def createTexString(link_name):
                 v = i.text
                 v = "".join(v)
 
-            tex_string += (
-                f"  \\chapter{{{v}}}\n  \\chapterauthor{{{k}}}\n  \\input{dir_name}\n\n"
-            )
+            tex_string += talkReplace(talk_lines, v, k, dir_name)
             print(tex_string)
     return tex_string
 
@@ -170,6 +214,12 @@ sessions = [
 
 # create final table of contents string and insert into tex file
 def createContentTable(true_links, sessions):
+    # open and find line to replace
+    toc_name = "../t-general_conference.tex"
+    session_lines = getLocations(toc_name, "PART HEADER START>")
+    session_end_lines = getLocations(toc_name, "PART HEADER END>")
+    talk_lines = getLocations(toc_name, "CHAPTER ENTRY>")
+
     tex_string = ""
     n = 0
     first_time = True
@@ -178,27 +228,25 @@ def createContentTable(true_links, sessions):
         session_string = "[]---"
         if session_string in str(j):
             if first_time is True:
-                tex_string += f"<TOC START>\n\n\\part{{{sessions[n]}}}\n \\begin{{multicols}}{{2}}\n\n\n"
+                tex_string += sessionReplace(session_lines, sessions[n])
                 n += 1
                 print("first time entered")
                 first_time = False
                 continue
             else:
-                tex_string += f" \\end{{multicols}}\n\n%-------------------------------------------------\n% {{{sessions[n]}}}\n%-------------------------------------------------\n\\part{{{sessions[n]}}}\n \\begin{{multicols}}{{2}}\n\n\n"
+                tex_string += session_end_lines
                 n += 1
                 print("session_string entered")
                 continue
         else:
             print("else entered")
             link_name = str(j)
-            get_tex = createTexString(link_name)
+            get_tex = createTexString(talk_lines, link_name)
             tex_string += get_tex
 
     # built final input string
-    full_tex = f"{tex_string}\n\n\\end{{multicols}}\n\n\\restore{{multicols}}"
+    full_tex = f"{tex_string}\n{session_end_lines}"
 
-    # open and find line to replace
-    toc_name = "../t-general_conference.tex"
     # fil = open(toc_name, "rt")
     lookup = "<TOC START>"
 
