@@ -215,7 +215,7 @@ sessions = [
 # create final table of contents string and insert into tex file
 def createContentTable(true_links, sessions):
     # open and find line to replace
-    toc_name = "../t-general_conference.tex"
+    toc_name = "../t-general_conference--notepad.tex"
     session_lines = getLocations(toc_name, "PART HEADER START>")
     session_end_lines = getLocations(toc_name, "PART HEADER END>")
     talk_lines = getLocations(toc_name, "CHAPTER ENTRY>")
@@ -235,6 +235,7 @@ def createContentTable(true_links, sessions):
                 continue
             else:
                 tex_string += session_end_lines
+                tex_string += session_replace(session_lines, sessions[n])
                 n += 1
                 print("session_string entered")
                 continue
