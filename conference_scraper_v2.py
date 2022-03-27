@@ -13,7 +13,7 @@ import argparse
 from lxml import etree
 import requests
 import os
-
+import unidecode
 
 global base
 
@@ -95,6 +95,7 @@ def build_file(i, fpath):
                 name = k[3:]
             else:
                 name = k[:]
+            name = unidecode.unidecode(name)
             name = name.replace("President ", "")
             name = name.replace("Elder ", "")
             name = name.replace("Bishop ", "")
@@ -108,6 +109,7 @@ def build_file(i, fpath):
         for k in title:
             title = str(title)
             title = k[:]
+            title = unidecode.unidecode(title)
             title = title.replace("'", "")
             title = title.replace(",", "")
             title = title.replace("?", "")
