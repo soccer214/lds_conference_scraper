@@ -233,11 +233,6 @@ def createTexString(talk_lines, link_name):
     return tex_string
 
 
-if __name__ == "__main__":
-    readCommandLine()
-    print("###################################start:")
-
-
 # create final table of contents string and insert into tex file
 def createContentTable(true_links, sessions):
     # open and find line to replace
@@ -287,6 +282,10 @@ def createContentTable(true_links, sessions):
     fil.close()
     return
 
+
+if __name__ == "__main__":
+    readCommandLine()
+    print("###################################start:")
 
 links = grab_conf()
 
