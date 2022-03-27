@@ -13,6 +13,7 @@ from lxml import etree
 import sys
 import argparse
 from lxml import etree
+import unidecode
 
 global base
 
@@ -28,27 +29,58 @@ def readCommandLine():
     # read command line args
     parser = argparse.ArgumentParser()
     parser.add_argument("-y", type=str, help="year: -y four digit")
+
     parser.add_argument("-m", type=str, help="month: two digit")
-    parser.add_argument("-t", type=str, required=False, help="test: -t True")
+    parser.add_argument("-t", action="store_true", required=False, help="test: -t True")
+
     parser.add_argument(
         "-c", type=str, required=False, help="count: -c digit, only valid in testing"
     )
+    parser.add_argument(
+        "-w",
+        type=int,
+        required=False,
+        help="womens general session; enter session number (starting at 1)",
+    )
+    parser.add_argument(
+        "-p",
+        type=int,
+        required=False,
+        help="priesthood session true; enter session number (starting at 1)",
+    )
+
+    # parser all arguments
     args = parser.parse_args()
 
     if args.y is None or args.m is None:
         raise argparse.ArgumentError(
             'Must input -y as year ("2020") and -m as month ("04", "10")'
         )
-    global year, month, count, test
+
+    global year, month, count, test, sessions
+
+    # session list (##### WILL NEED TO UPDATE BASED ON CONFERENCE #########)
+    sessions = [
+        "Saturday Morning Session",
+        "Saturday Afternoon Session",
+        "Sunday Morning Session",
+        "Sunday Afternoon Session",
+    ]
+
+    priesthood = "Priesthood Session"
+    general_relief = "General Relief Society Session"
     # designate args to values
     year = args.y
     month = args.m
-    count = args.c
-    t_first = args.t
-    if t_first:
-        test = True
-    else:
-        test = False
+    if args.c:
+        count = int(args.c)
+    if args.t:
+        t_first = args.t
+    if args.w:
+        sessions.insert(args.w + 1, general_relief)
+    if args.p:
+        sessions.insert(args.p + 1, priesthood)
+
     return
 
 
@@ -103,7 +135,7 @@ def dropFirstChar(string):
 
 # replace characters in string
 def sessionReplace(string, replace):
-    string = string.replace("Saturday Morning Session", replace)
+    string = string.replace("Saturday Morning Session", str(replace))
     return string
 
 
@@ -136,6 +168,8 @@ def create_title(i):
             name = k[2:]
         else:
             name = k[:]
+        # replace lowercase accented letters with unaccented letters
+        name = unidecode.unidecode(name)
         name = name.replace("President ", "")
         name = name.replace("Elder ", "")
         name = name.replace("Bishop ", "")
@@ -149,6 +183,7 @@ def create_title(i):
     for k in title:
         title = str(title)
         title = k[:]
+        title = unidecode.unidecode(title)
         title = title.replace("'", "")
         title = title.replace(",", "")
         title = title.replace("?", "")
@@ -202,15 +237,6 @@ if __name__ == "__main__":
     readCommandLine()
     print("###################################start:")
 
-# session list (##### WILL NEED TO UPDATE BASED ON CONFERENCE #########)
-sessions = [
-    "Saturday Morning Session",
-    "Saturday Afternoon Session",
-    "Priesthood Session",
-    "Sunday Morning Session",
-    "Sunday Afternoon Session",
-    "General Relief Society Session",
-]
 
 # create final table of contents string and insert into tex file
 def createContentTable(true_links, sessions):
@@ -235,7 +261,7 @@ def createContentTable(true_links, sessions):
                 continue
             else:
                 tex_string += session_end_lines
-                tex_string += session_replace(session_lines, sessions[n])
+                tex_string += sessionReplace(session_lines, sessions[n])
                 n += 1
                 print("session_string entered")
                 continue
